@@ -11,7 +11,7 @@ use Carbon\Carbon;
 class ProductPlanningService
 {
     /**
-     * Hitung total stok produk (akumulasi batch)
+     * Total stok produk (akumulasi batch)
      */
     public function getTotalStock(int $productId): float
     {
@@ -20,21 +20,24 @@ class ProductPlanningService
     }
 
     /**
-     * Hitung rata-rata penjualan harian
+     * Hitung rata-rata demand harian
+     * (penjualan + pemakaian internal)
      */
-    public function getAverageDailySales(int $productId, int $days = 30): float
-    {
+    public function getAverageDailyDemand(
+        int $productId,
+        int $days = 30
+    ): float {
         $startDate = Carbon::now()->subDays($days);
 
-        $totalSold = StockMovement::where('tipe', 'keluar')
-            ->where('sumber', 'penjualan')
+        $totalDemand = StockMovement::where('tipe', 'keluar')
+            ->whereIn('sumber', ['penjualan', 'pemakaian_internal'])
             ->whereHas('productStock', function ($q) use ($productId) {
                 $q->where('product_id', $productId);
             })
             ->where('created_at', '>=', $startDate)
             ->sum('qty');
 
-        return $days > 0 ? $totalSold / $days : 0;
+        return $days > 0 ? $totalDemand / $days : 0;
     }
 
     /**
@@ -42,11 +45,12 @@ class ProductPlanningService
      */
     public function calculateROP(int $productId): float
     {
-        $planning = ProductPlanning::where('product_id', $productId)->firstOrFail();
+        $planning = ProductPlanning::where('product_id', $productId)
+            ->firstOrFail();
 
-        $avgDailySales = $this->getAverageDailySales($productId);
+        $avgDailyDemand = $this->getAverageDailyDemand($productId);
 
-        return ($avgDailySales * $planning->lead_time_days)
+        return ($avgDailyDemand * $planning->lead_time_days)
             + $planning->safety_stock;
     }
 

@@ -42,26 +42,44 @@ Route::middleware('auth:sanctum')->group(function () {
     // =====================================================
     Route::middleware(['role:admin_inventory'])->group(function () {
 
-        // Materials
+        // ==========================
+        // MATERIALS
+        // ==========================
         Route::apiResource('materials', MaterialController::class)
             ->except(['index', 'show']);
 
-        // Products
+        // ==========================
+        // PRODUCTS
+        // ==========================
         Route::apiResource('products', ProductController::class)
             ->except(['index', 'show']);
 
-        // Formulas
+        // ==========================
+        // FORMULAS
+        // ==========================
         Route::apiResource('formulas', FormulaController::class)
             ->except(['index', 'show']);
 
-        // Production
+        // ==========================
+        // PRODUCTION
+        // ==========================
+        /**
+         * Produksi produk jadi:
+         * - sistem otomatis pakai formula aktif
+         * - konsumsi material
+         * - update stok produk
+         * - cek ROP produk & material
+         */
         Route::post('productions', [ProductionController::class, 'store']);
-        Route::put('productions/{production}', [ProductionController::class, 'update']);
 
-        // Sales
+        // ==========================
+        // SALES
+        // ==========================
         Route::post('sales', [SaleController::class, 'store']);
 
-        // Disposal
+        // ==========================
+        // DISPOSAL (Rusak / Expired)
+        // ==========================
         Route::post('disposals', [StockDisposalController::class, 'store']);
     });
 
@@ -107,7 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('disposals', [StockDisposalController::class, 'index']);
 
         // ==========================
-        // ANALYTICS (DASHBOARD)
+        // ANALYTICS & MONITORING
         // ==========================
         Route::prefix('analytics')->group(function () {
             Route::get('/dashboard', [AnalyticsController::class, 'dashboard']);

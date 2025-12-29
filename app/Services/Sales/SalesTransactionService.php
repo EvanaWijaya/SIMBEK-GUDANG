@@ -63,7 +63,7 @@ class SalesTransactionService
             // 3️⃣ Catat histori stok keluar
             StockMovement::create([
                 'tipe'             => 'keluar',
-                'sumber'           => 'sale',
+                'sumber'           => 'penjualan',
                 'qty'              => $used,
                 'product_stock_id' => $stock->id,
                 'ref_id'           => $saleId,

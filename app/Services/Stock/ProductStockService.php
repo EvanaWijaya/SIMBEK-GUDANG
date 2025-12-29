@@ -2,7 +2,6 @@
 
 namespace App\Services\Stock;
 
-use App\Models\Product;
 use App\Models\ProductStock;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -47,20 +46,30 @@ class ProductStockService extends BaseStockService
     }
 
     /**
-     * Kurangi stok produk untuk penjualan (FIFO per batch)
+     * Kurangi stok produk (FIFO)
+     * Digunakan untuk:
+     * - penjualan
+     * - pemakaian internal
      */
-    public function reduceStockForSale(
+    public function reduceStock(
         int $productId,
         float $qty,
-        int $salesId
+        string $source,
+        ?int $refId = null
     ): void {
         $this->beginStockTransaction(function () use (
             $productId,
             $qty,
-            $salesId
+            $source,
+            $refId
         ) {
             if ($qty <= 0) {
-                throw new InvalidArgumentException('Qty penjualan harus lebih dari 0');
+                throw new InvalidArgumentException('Qty harus lebih dari 0');
+            }
+
+            $allowedSources = ['penjualan', 'pemakaian_internal'];
+            if (!in_array($source, $allowedSources)) {
+                throw new InvalidArgumentException('Sumber stok tidak valid');
             }
 
             $availableStock = $this->getAvailableProductStock($productId);
@@ -84,10 +93,10 @@ class ProductStockService extends BaseStockService
                 // Catat stock movement (produk keluar)
                 $this->recordStockMovement([
                     'tipe'             => 'keluar',
-                    'sumber'           => 'penjualan',
+                    'sumber'           => $source,
                     'qty'              => $deductQty,
                     'product_stock_id' => $stock->id,
-                    'ref_id'           => $salesId,
+                    'ref_id'           => $refId,
                 ]);
 
                 $remainingQty -= $deductQty;
@@ -96,7 +105,18 @@ class ProductStockService extends BaseStockService
     }
 
     /**
-     * Ambil stok produk yang masih tersedia (urut FIFO)
+     * Wrapper khusus penjualan (opsional tapi rapi)
+     */
+    public function reduceStockForSale(
+        int $productId,
+        float $qty,
+        int $salesId
+    ): void {
+        $this->reduceStock($productId, $qty, 'penjualan', $salesId);
+    }
+
+    /**
+     * Ambil stok produk yang masih tersedia (FIFO)
      */
     protected function getAvailableProductStock(int $productId): Collection
     {
